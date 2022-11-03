@@ -1,5 +1,46 @@
 record(ai, "example:ai") {
+    field(DTYP, "ferrite")
+    field(SCAN, "I/O Intr")
 }
 
 record(ao, "example:ao") {
+    field(DTYP, "ferrite")
+}
+
+record(aai, "example:aai") {
+    field(DTYP, "ferrite")
+    field(NELM, 64)
+    field(FTVL, "LONG")
+    field(SCAN, "I/O Intr")
+}
+
+record(aao, "example:aao") {
+    field(DTYP, "ferrite")
+    field(NELM, 64)
+    field(FTVL, "LONG")
+}
+
+record(aai, "example:waveform") {
+    field(DTYP, "ferrite")
+    field(NELM, 64)
+    field(FTVL, "LONG")
+    field(SCAN, "I/O Intr")
+}
+
+record(bi, "example:bi") {
+    field(DTYP, "ferrite")
+    field(SCAN, "I/O Intr")
+}
+
+record(bo, "example:bo") {
+    field(DTYP, "ferrite")
+}
+
+record(mbbiDirect, "example:mbbiDirect") {
+    field(DTYP, "ferrite")
+    field(SCAN, "I/O Intr")
+}
+
+record(mbboDirect, "example:mbboDirect") {
+    field(DTYP, "ferrite")
 }

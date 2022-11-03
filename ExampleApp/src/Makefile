@@ -19,6 +19,12 @@ Example_SRCS += Example_registerRecordDeviceDriver.cpp
 # Build the main IOC entry point where needed
 Example_SRCS += ExampleMain.cpp
 
+# Use Ferrite
+Example_DBD += Ferrite.dbd
+Example_LIBS += Ferrite
+SHRLIB_SEARCH_DIRS += $(TOP)/backend/target/debug
+Example_LIBS += backend # -Wl,-Bdynamic -l:libbackend.so
+
 # Finally link IOC to the EPICS Base libraries
 Example_LIBS += $(EPICS_BASE_IOC_LIBS)
 

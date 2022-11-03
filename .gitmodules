@@ -1,0 +1,7 @@
+[submodule "FerriteSup"]
+	path = FerriteSup
+	url = ../ferrite-epics.git
+
+[submodule "backend/ferrite"]
+	path = backend/ferrite
+	url = ../ferrite-rs.git
