@@ -23,6 +23,7 @@ O.*/
 # Common files created by other tools
 /QtC-*
 /.vscode/
+*.code-workspace
 *.orig
 *.log
 .*.swp

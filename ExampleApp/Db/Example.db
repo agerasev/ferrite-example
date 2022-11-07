@@ -44,3 +44,12 @@ record(mbbiDirect, "example:mbbiDirect") {
 record(mbboDirect, "example:mbboDirect") {
     field(DTYP, "ferrite")
 }
+
+record(stringin, "example:stringin") {
+    field(DTYP, "ferrite")
+    field(SCAN, "I/O Intr")
+}
+
+record(stringout, "example:stringout") {
+    field(DTYP, "ferrite")
+}
