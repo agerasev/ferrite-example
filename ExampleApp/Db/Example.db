@@ -5,6 +5,7 @@ record(ai, "example:ai") {
 
 record(ao, "example:ao") {
     field(DTYP, "ferrite")
+    field(SCAN, "I/O Intr")
 }
 
 #record(aai, "example:aai") {
@@ -34,6 +35,7 @@ record(bi, "example:bi") {
 
 record(bo, "example:bo") {
     field(DTYP, "ferrite")
+    field(SCAN, "I/O Intr")
 }
 
 record(mbbiDirect, "example:mbbiDirect") {
@@ -43,6 +45,7 @@ record(mbbiDirect, "example:mbbiDirect") {
 
 record(mbboDirect, "example:mbboDirect") {
     field(DTYP, "ferrite")
+    field(SCAN, "I/O Intr")
 }
 
 #record(stringin, "example:stringin") {
