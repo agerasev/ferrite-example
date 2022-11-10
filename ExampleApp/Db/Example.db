@@ -5,28 +5,29 @@ record(ai, "example:ai") {
 
 record(ao, "example:ao") {
     field(DTYP, "ferrite")
+    field(PINI, "YES")
+}
+
+record(aai, "example:aai") {
+    field(DTYP, "ferrite")
+    field(NELM, 64)
+    field(FTVL, "LONG")
     field(SCAN, "I/O Intr")
 }
 
-#record(aai, "example:aai") {
-#    field(DTYP, "ferrite")
-#    field(NELM, 64)
-#    field(FTVL, "LONG")
-#    field(SCAN, "I/O Intr")
-#}
-#
-#record(aao, "example:aao") {
-#    field(DTYP, "ferrite")
-#    field(NELM, 64)
-#    field(FTVL, "LONG")
-#}
-#
-#record(aai, "example:waveform") {
-#    field(DTYP, "ferrite")
-#    field(NELM, 64)
-#    field(FTVL, "LONG")
-#    field(SCAN, "I/O Intr")
-#}
+record(aao, "example:aao") {
+    field(DTYP, "ferrite")
+    field(NELM, 64)
+    field(FTVL, "LONG")
+    field(PINI, "YES")
+}
+
+record(aai, "example:waveform") {
+    field(DTYP, "ferrite")
+    field(NELM, 64)
+    field(FTVL, "LONG")
+    field(SCAN, "I/O Intr")
+}
 
 record(bi, "example:bi") {
     field(DTYP, "ferrite")
@@ -35,7 +36,7 @@ record(bi, "example:bi") {
 
 record(bo, "example:bo") {
     field(DTYP, "ferrite")
-    field(SCAN, "I/O Intr")
+    field(PINI, "YES")
 }
 
 record(mbbiDirect, "example:mbbiDirect") {
@@ -45,14 +46,15 @@ record(mbbiDirect, "example:mbbiDirect") {
 
 record(mbboDirect, "example:mbboDirect") {
     field(DTYP, "ferrite")
+    field(PINI, "YES")
+}
+
+record(stringin, "example:stringin") {
+    field(DTYP, "ferrite")
     field(SCAN, "I/O Intr")
 }
 
-#record(stringin, "example:stringin") {
-#    field(DTYP, "ferrite")
-#    field(SCAN, "I/O Intr")
-#}
-#
-#record(stringout, "example:stringout") {
-#    field(DTYP, "ferrite")
-#}
+record(stringout, "example:stringout") {
+    field(DTYP, "ferrite")
+    field(PINI, "YES")
+}
