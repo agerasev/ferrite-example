@@ -5,6 +5,7 @@ record(ai, "example:ai") {
 
 record(ao, "example:ao") {
     field(DTYP, "ferrite")
+    field(PINI, "YES")
 }
 
 record(aai, "example:aai") {
@@ -18,6 +19,7 @@ record(aao, "example:aao") {
     field(DTYP, "ferrite")
     field(NELM, 64)
     field(FTVL, "LONG")
+    field(PINI, "YES")
 }
 
 record(aai, "example:waveform") {
@@ -34,6 +36,7 @@ record(bi, "example:bi") {
 
 record(bo, "example:bo") {
     field(DTYP, "ferrite")
+    field(PINI, "YES")
 }
 
 record(mbbiDirect, "example:mbbiDirect") {
@@ -43,6 +46,7 @@ record(mbbiDirect, "example:mbbiDirect") {
 
 record(mbboDirect, "example:mbboDirect") {
     field(DTYP, "ferrite")
+    field(PINI, "YES")
 }
 
 record(stringin, "example:stringin") {
@@ -52,4 +56,5 @@ record(stringin, "example:stringin") {
 
 record(stringout, "example:stringout") {
     field(DTYP, "ferrite")
+    field(PINI, "YES")
 }
