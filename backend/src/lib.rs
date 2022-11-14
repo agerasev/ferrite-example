@@ -58,10 +58,10 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
         loop {
             let value = match init.take() {
                 Some(init) => {
-                    ao.wait().await.write(init).await;
+                    ao.try_acquire().unwrap().write(init).await;
                     init
                 }
-                None => ao.wait().await.read().await,
+                None => ao.acquire().await.read().await,
             };
             log::info!("ao -> ai: {}", value);
             ai.request().await.write(value).await;
@@ -75,25 +75,18 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
             buffer.clear();
             match init.take() {
                 Some(init) => {
-                    let mut value = aao.wait().await.write();
-                    value.extend(init);
-                    buffer.extend_from_slice(&value);
-                    value.commit().await;
+                    aao.try_acquire().unwrap().write_from(init.clone()).await;
+                    buffer.extend(init);
                 }
                 None => {
-                    let value = aao.wait().await.read();
-                    buffer.extend_from_slice(&value);
-                    value.close().await;
+                    aao.acquire().await.read_to_vec(&mut buffer).await;
                 }
             };
             log::info!("aao -> (aai, waveform): {:?}", buffer);
-            let mut ovals = (
-                aai.request().await.write(),
-                waveform.request().await.write(),
+            join!(
+                async { aai.request().await.write_from_slice(&buffer).await },
+                async { waveform.request().await.write_from_slice(&buffer).await }
             );
-            ovals.0.extend_from_slice(&buffer);
-            ovals.1.extend_from_slice(&buffer);
-            join!(ovals.0.commit(), ovals.1.commit());
         }
     });
     exec.spawn_ok(async move {
@@ -101,10 +94,10 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
         loop {
             let value = match init.take() {
                 Some(init) => {
-                    bo.wait().await.write(init).await;
+                    bo.try_acquire().unwrap().write(init).await;
                     init
                 }
-                None => bo.wait().await.read().await,
+                None => bo.acquire().await.read().await,
             };
             log::info!("bo -> bi: {}", value != 0);
             bi.request().await.write(value).await;
@@ -115,10 +108,10 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
         loop {
             let value = match init.take() {
                 Some(init) => {
-                    mbbo_direct.wait().await.write(init).await;
+                    mbbo_direct.try_acquire().unwrap().write(init).await;
                     init
                 }
-                None => mbbo_direct.wait().await.read().await,
+                None => mbbo_direct.acquire().await.read().await,
             };
             log::info!("mbbo_direct -> mbbi_direct: {:016b}", value);
             mbbi_direct.request().await.write(value).await;
@@ -132,24 +125,22 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
             buffer.clear();
             match init.take() {
                 Some(init) => {
-                    let mut value = stringout.wait().await.write();
-                    value.extend_from_slice(init.as_bytes());
-                    buffer.extend_from_slice(&value);
-                    value.commit().await;
+                    stringout
+                        .try_acquire()
+                        .unwrap()
+                        .write_from_slice(init.as_bytes())
+                        .await;
+                    buffer.extend_from_slice(init.as_bytes());
                 }
                 None => {
-                    let value = stringout.wait().await.read();
-                    buffer.extend_from_slice(&value);
-                    value.close().await;
+                    stringout.acquire().await.read_to_vec(&mut buffer).await;
                 }
             };
             log::info!(
                 "stringout -> stringin: '{}'",
                 String::from_utf8_lossy(&buffer)
             );
-            let mut oval = stringin.request().await.write();
-            oval.extend_from_slice(&buffer);
-            oval.commit().await;
+            stringin.request().await.write_from_slice(&buffer).await;
         }
     });
 
