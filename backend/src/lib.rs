@@ -26,30 +26,26 @@ where
     let var = ctx
         .registry
         .remove(name)
-        .expect(&format!("No such name: {}", name));
+        .unwrap_or_else(|| panic!("No such name: {}", name));
     let info = var.info();
     var.downcast()
-        .expect(&format!("{}: Wrong type, {:?} expected", name, info))
+        .unwrap_or_else(|| panic!("{}: Wrong type, {:?} expected", name, info))
 }
 
 async fn async_main(exec: ThreadPool, mut ctx: Context) {
     log::info!("IOC started");
 
-    let mut ai: Variable<f64, false, true, true> = take_var(&mut ctx, "example:ai");
-    let mut ao: Variable<f64, true, true, false> = take_var(&mut ctx, "example:ao");
-    let mut aai: ArrayVariable<i32, false, true, true> = take_var(&mut ctx, "example:aai");
-    let mut aao: ArrayVariable<i32, true, true, false> = take_var(&mut ctx, "example:aao");
-    let mut waveform: ArrayVariable<i32, false, true, true> =
-        take_var(&mut ctx, "example:waveform");
-    let mut bi: Variable<u16, false, true, true> = take_var(&mut ctx, "example:bi");
-    let mut bo: Variable<u16, true, true, false> = take_var(&mut ctx, "example:bo");
-    let mut mbbi_direct: Variable<u32, false, true, true> =
-        take_var(&mut ctx, "example:mbbiDirect");
-    let mut mbbo_direct: Variable<u32, true, true, false> =
-        take_var(&mut ctx, "example:mbboDirect");
-    let mut stringin: ArrayVariable<u8, false, true, true> = take_var(&mut ctx, "example:stringin");
-    let mut stringout: ArrayVariable<u8, true, true, false> =
-        take_var(&mut ctx, "example:stringout");
+    let mut ai: Variable<f64> = take_var(&mut ctx, "example:ai");
+    let mut ao: Variable<f64> = take_var(&mut ctx, "example:ao");
+    let mut aai: ArrayVariable<i32> = take_var(&mut ctx, "example:aai");
+    let mut aao: ArrayVariable<i32> = take_var(&mut ctx, "example:aao");
+    let mut waveform: ArrayVariable<i32> = take_var(&mut ctx, "example:waveform");
+    let mut bi: Variable<u16> = take_var(&mut ctx, "example:bi");
+    let mut bo: Variable<u16> = take_var(&mut ctx, "example:bo");
+    let mut mbbi_direct: Variable<u32> = take_var(&mut ctx, "example:mbbiDirect");
+    let mut mbbo_direct: Variable<u32> = take_var(&mut ctx, "example:mbboDirect");
+    let mut stringin: ArrayVariable<u8> = take_var(&mut ctx, "example:stringin");
+    let mut stringout: ArrayVariable<u8> = take_var(&mut ctx, "example:stringout");
 
     assert!(ctx.registry.is_empty());
 
@@ -58,7 +54,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
         loop {
             let value = match init.take() {
                 Some(init) => {
-                    ao.try_acquire().unwrap().write(init).await;
+                    ao.request().await.write(init).await;
                     init
                 }
                 None => ao.acquire().await.read().await,
@@ -75,7 +71,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
             buffer.clear();
             match init.take() {
                 Some(init) => {
-                    aao.try_acquire().unwrap().write_from(init.clone()).await;
+                    aao.request().await.write_from(init.clone()).await;
                     buffer.extend(init);
                 }
                 None => {
@@ -94,7 +90,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
         loop {
             let value = match init.take() {
                 Some(init) => {
-                    bo.try_acquire().unwrap().write(init).await;
+                    bo.request().await.write(init).await;
                     init
                 }
                 None => bo.acquire().await.read().await,
@@ -108,7 +104,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
         loop {
             let value = match init.take() {
                 Some(init) => {
-                    mbbo_direct.try_acquire().unwrap().write(init).await;
+                    mbbo_direct.request().await.write(init).await;
                     init
                 }
                 None => mbbo_direct.acquire().await.read().await,
@@ -126,8 +122,8 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
             match init.take() {
                 Some(init) => {
                     stringout
-                        .try_acquire()
-                        .unwrap()
+                        .request()
+                        .await
                         .write_from_slice(init.as_bytes())
                         .await;
                     buffer.extend_from_slice(init.as_bytes());
