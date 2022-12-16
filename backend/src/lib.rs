@@ -14,7 +14,7 @@ fn app_main(mut ctx: Context) {
     use env_logger::Env;
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
-    let exec = ThreadPool::builder().pool_size(2).create().unwrap();
+    let exec = ThreadPool::builder().create().unwrap();
     block_on(async_main(exec, ctx));
 }
 
@@ -100,7 +100,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
         }
     });
     exec.spawn_ok(async move {
-        let mut init = Some(0xaaaa);
+        let mut init = Some(0xaaaaaaaa);
         loop {
             let value = match init.take() {
                 Some(init) => {
@@ -109,7 +109,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                 }
                 None => mbbo_direct.acquire().await.read().await,
             };
-            log::info!("mbbo_direct -> mbbi_direct: {:016b}", value);
+            log::info!("mbbo_direct -> mbbi_direct: {:032b}", value);
             mbbi_direct.request().await.write(value).await;
         }
     });
