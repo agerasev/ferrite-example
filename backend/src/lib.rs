@@ -1,10 +1,16 @@
+use async_std::net::TcpStream;
 use ferrite::{entry_point, prelude::*, AnyVariable, ArrayVariable, Context, Variable};
+use flatty::{
+    portable::{le::*, NativeCast},
+    vec::FromIterator,
+};
+use flatty_io::{AsyncReader as MsgReader, AsyncWriter as MsgWriter};
 use futures::{
     executor::{block_on, ThreadPool},
     future::pending,
-    join,
 };
 use macro_rules_attribute::apply;
+use protocol::*;
 
 /// *Export symbols being called from IOC.*
 pub use ferrite::export;
@@ -49,94 +55,133 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
 
     assert!(ctx.registry.is_empty());
 
+    let max_msg_size: usize = 259;
+    let stream = TcpStream::connect("127.0.0.1:4884").await.unwrap();
+    let mut reader = MsgReader::<InMsg, _>::new(stream.clone(), max_msg_size);
+    let writer_ = MsgWriter::<OutMsg, _>::new(stream, max_msg_size);
+    log::info!("Socket connected");
+
     exec.spawn_ok(async move {
-        let mut init = Some(std::f64::consts::PI);
         loop {
-            let value = match init.take() {
-                Some(init) => {
-                    ao.request().await.write(init).await;
-                    init
+            let msg = reader.read_message().await.unwrap();
+            match msg.as_ref() {
+                InMsgRef::Ai(value) => {
+                    log::info!("ai: {:?}", value);
+                    ai.request().await.write(value.to_native()).await;
                 }
-                None => ao.acquire().await.read().await,
-            };
-            log::info!("ao -> ai: {}", value);
-            ai.request().await.write(value).await;
+                InMsgRef::Aai(values) => {
+                    log::info!("aai: {:?}", values.as_slice());
+                    assert!(values.len() <= aai.max_len());
+                    let mut var = aai.request().await;
+                    var.clear();
+                    assert_eq!(
+                        var.extend_from_iter(values.iter().map(|x| x.to_native())),
+                        values.len()
+                    );
+                    var.accept().await;
+                }
+                InMsgRef::Waveform(values) => {
+                    log::info!("waveform: {:?}", values.as_slice());
+                    assert!(values.len() <= waveform.max_len());
+                    let mut var = waveform.request().await;
+                    var.clear();
+                    assert_eq!(
+                        var.extend_from_iter(values.iter().map(|x| x.to_native())),
+                        values.len()
+                    );
+                    var.accept().await;
+                }
+                InMsgRef::Bi(value) => {
+                    log::info!("bi: {:?}", value);
+                    bi.request().await.write(value.to_native()).await;
+                }
+                InMsgRef::MbbiDirect(value) => {
+                    log::info!("mbbi_direct: {:?}", value);
+                    mbbi_direct.request().await.write(value.to_native()).await;
+                }
+                InMsgRef::Stringin(string) => {
+                    log::info!("stringin: {:?}", string);
+                    stringin.request().await.write_from_slice(string).await;
+                }
+            }
         }
     });
+
+    let writer = writer_.clone();
     exec.spawn_ok(async move {
-        assert!(aao.max_len() <= aai.max_len());
-        let mut buffer = Vec::with_capacity(aao.max_len());
-        let mut init = Some(0..(aao.max_len() as i32));
+        let mut writer = writer.clone();
         loop {
-            buffer.clear();
-            match init.take() {
-                Some(init) => {
-                    aao.request().await.write_from(init.clone()).await;
-                    buffer.extend(init);
-                }
-                None => {
-                    aao.acquire().await.read_to_vec(&mut buffer).await;
-                }
-            };
-            log::info!("aao -> (aai, waveform): {:?}", buffer);
-            join!(
-                async { aai.request().await.write_from_slice(&buffer).await },
-                async { waveform.request().await.write_from_slice(&buffer).await }
-            );
+            let value = ao.acquire().await.read().await;
+            log::info!("ao: {:?}", value);
+            writer
+                .new_message()
+                .emplace(OutMsgInitAo(F64::from_native(value)))
+                .unwrap()
+                .write()
+                .await
+                .unwrap();
         }
     });
+
+    let mut writer = writer_.clone();
     exec.spawn_ok(async move {
-        let mut init = Some(1);
         loop {
-            let value = match init.take() {
-                Some(init) => {
-                    bo.request().await.write(init).await;
-                    init
-                }
-                None => bo.acquire().await.read().await,
-            };
-            log::info!("bo -> bi: {}", value != 0);
-            bi.request().await.write(value).await;
+            let var = aao.acquire().await;
+            log::info!("aao: {:?}", var.as_slice());
+            let msg = writer
+                .new_message()
+                .emplace(OutMsgInitAao(FromIterator(
+                    var.iter().map(|x| I32::from_native(*x)),
+                )))
+                .unwrap();
+            var.accept().await;
+            msg.write().await.unwrap();
         }
     });
+
+    let writer = writer_.clone();
     exec.spawn_ok(async move {
-        let mut init = Some(0xaaaaaaaa);
+        let mut writer = writer.clone();
         loop {
-            let value = match init.take() {
-                Some(init) => {
-                    mbbo_direct.request().await.write(init).await;
-                    init
-                }
-                None => mbbo_direct.acquire().await.read().await,
-            };
-            log::info!("mbbo_direct -> mbbi_direct: {:032b}", value);
-            mbbi_direct.request().await.write(value).await;
+            let value = bo.acquire().await.read().await;
+            log::info!("bo: {:?}", value);
+            writer
+                .new_message()
+                .emplace(OutMsgInitBo(U16::from_native(value)))
+                .unwrap()
+                .write()
+                .await
+                .unwrap();
         }
     });
+
+    let writer = writer_.clone();
     exec.spawn_ok(async move {
-        assert!(stringout.max_len() <= stringin.max_len());
-        let mut buffer = Vec::with_capacity(stringout.max_len());
-        let mut init = Some("Hello, Ferrite!");
+        let mut writer = writer.clone();
         loop {
-            buffer.clear();
-            match init.take() {
-                Some(init) => {
-                    stringout
-                        .request()
-                        .await
-                        .write_from_slice(init.as_bytes())
-                        .await;
-                    buffer.extend_from_slice(init.as_bytes());
-                }
-                None => {
-                    stringout.acquire().await.read_to_vec(&mut buffer).await;
-                }
-            };
-            log::info!(
-                "stringout -> stringin: '{}'",
-                String::from_utf8_lossy(&buffer)
-            );
-            stringin.request().await.write_from_slice(&buffer).await;
+            let value = mbbo_direct.acquire().await.read().await;
+            log::info!("mbbo_direct: {:?}", value);
+            writer
+                .new_message()
+                .emplace(OutMsgInitMbboDirect(U32::from_native(value)))
+                .unwrap()
+                .write()
+                .await
+                .unwrap();
+        }
+    });
+
+    let mut writer = writer_.clone();
+    exec.spawn_ok(async move {
+        loop {
+            let var = stringout.acquire().await;
+            log::info!("stringout: {:?}", var.as_slice());
+            let msg = writer
+                .new_message()
+                .emplace(OutMsgInitStringout(FromIterator(var.iter().cloned())))
+                .unwrap();
+            var.accept().await;
+            msg.write().await.unwrap();
         }
     });
 
