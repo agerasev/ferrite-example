@@ -55,10 +55,9 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
 
     assert!(ctx.registry.is_empty());
 
-    let max_msg_size: usize = 259;
     let stream = TcpStream::connect("127.0.0.1:4884").await.unwrap();
-    let mut reader = MsgReader::<InMsg, _>::new(stream.clone(), max_msg_size);
-    let writer_ = MsgWriter::<OutMsg, _>::new(stream, max_msg_size);
+    let mut reader = MsgReader::<InMsg, _>::new(stream.clone(), MAX_MSG_SIZE);
+    let writer_ = MsgWriter::<OutMsg, _>::new(stream, MAX_MSG_SIZE);
     log::info!("Socket connected");
 
     exec.spawn_ok(async move {
@@ -66,11 +65,11 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
             let msg = reader.read_message().await.unwrap();
             match msg.as_ref() {
                 InMsgRef::Ai(value) => {
-                    log::info!("ai: {:?}", value);
+                    log::debug!("ai: {:?}", value);
                     ai.request().await.write(value.to_native()).await;
                 }
                 InMsgRef::Aai(values) => {
-                    log::info!("aai: {:?}", values.as_slice());
+                    log::debug!("aai: {:?}", values.as_slice());
                     assert!(values.len() <= aai.max_len());
                     let mut var = aai.request().await;
                     var.clear();
@@ -81,7 +80,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                     var.accept().await;
                 }
                 InMsgRef::Waveform(values) => {
-                    log::info!("waveform: {:?}", values.as_slice());
+                    log::debug!("waveform: {:?}", values.as_slice());
                     assert!(values.len() <= waveform.max_len());
                     let mut var = waveform.request().await;
                     var.clear();
@@ -92,15 +91,15 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                     var.accept().await;
                 }
                 InMsgRef::Bi(value) => {
-                    log::info!("bi: {:?}", value);
+                    log::debug!("bi: {:?}", value);
                     bi.request().await.write(value.to_native()).await;
                 }
                 InMsgRef::MbbiDirect(value) => {
-                    log::info!("mbbi_direct: {:?}", value);
+                    log::debug!("mbbi_direct: {:?}", value);
                     mbbi_direct.request().await.write(value.to_native()).await;
                 }
                 InMsgRef::Stringin(string) => {
-                    log::info!("stringin: {:?}", string);
+                    log::debug!("stringin: {:?}", string);
                     stringin.request().await.write_from_slice(string).await;
                 }
             }
@@ -112,7 +111,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
         let mut writer = writer.clone();
         loop {
             let value = ao.acquire().await.read().await;
-            log::info!("ao: {:?}", value);
+            log::debug!("ao: {:?}", value);
             writer
                 .new_message()
                 .emplace(OutMsgInitAo(F64::from_native(value)))
@@ -127,7 +126,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
     exec.spawn_ok(async move {
         loop {
             let var = aao.acquire().await;
-            log::info!("aao: {:?}", var.as_slice());
+            log::debug!("aao: {:?}", var.as_slice());
             let msg = writer
                 .new_message()
                 .emplace(OutMsgInitAao(FromIterator(
@@ -144,7 +143,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
         let mut writer = writer.clone();
         loop {
             let value = bo.acquire().await.read().await;
-            log::info!("bo: {:?}", value);
+            log::debug!("bo: {:?}", value);
             writer
                 .new_message()
                 .emplace(OutMsgInitBo(U16::from_native(value)))
@@ -160,7 +159,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
         let mut writer = writer.clone();
         loop {
             let value = mbbo_direct.acquire().await.read().await;
-            log::info!("mbbo_direct: {:?}", value);
+            log::debug!("mbbo_direct: {:?}", value);
             writer
                 .new_message()
                 .emplace(OutMsgInitMbboDirect(U32::from_native(value)))
@@ -175,7 +174,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
     exec.spawn_ok(async move {
         loop {
             let var = stringout.acquire().await;
-            log::info!("stringout: {:?}", var.as_slice());
+            log::debug!("stringout: {:?}", var.as_slice());
             let msg = writer
                 .new_message()
                 .emplace(OutMsgInitStringout(FromIterator(var.iter().cloned())))

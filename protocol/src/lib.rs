@@ -1,5 +1,7 @@
 use flatty::{flat, portable::le::*, FlatVec};
 
+pub const MAX_MSG_SIZE: usize = 259;
+
 #[flat(portable = true, sized = false, enum_type = "u8")]
 pub enum InMsg {
     Ai(F64),

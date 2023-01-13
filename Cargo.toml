@@ -1,2 +1,6 @@
 [workspace]
 members = ["backend", "backend/ferrite", "protocol", "test"]
+
+[workspace.dependencies]
+flatty = { git = "https://github.com/agerasev/flatty.git" }    # "0.1.0-alpha.3"
+flatty-io = { git = "https://github.com/agerasev/flatty.git" } # "0.1.0-alpha.1"
