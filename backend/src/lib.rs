@@ -1,4 +1,4 @@
-use ferrite::{entry_point, prelude::*, AnyVariable, ArrayVariable, Context, Variable};
+use ferrite::{entry_point, Context, Downcast, TypedVariable as Variable, Variable as AnyVariable};
 use futures::{
     executor::{block_on, ThreadPool},
     future::pending,
@@ -37,15 +37,15 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
 
     let mut ai: Variable<f64> = take_var(&mut ctx, "example:ai");
     let mut ao: Variable<f64> = take_var(&mut ctx, "example:ao");
-    let mut aai: ArrayVariable<i32> = take_var(&mut ctx, "example:aai");
-    let mut aao: ArrayVariable<i32> = take_var(&mut ctx, "example:aao");
-    let mut waveform: ArrayVariable<i32> = take_var(&mut ctx, "example:waveform");
+    let mut aai: Variable<[i32]> = take_var(&mut ctx, "example:aai");
+    let mut aao: Variable<[i32]> = take_var(&mut ctx, "example:aao");
+    let mut waveform: Variable<[i32]> = take_var(&mut ctx, "example:waveform");
     let mut bi: Variable<u16> = take_var(&mut ctx, "example:bi");
     let mut bo: Variable<u16> = take_var(&mut ctx, "example:bo");
     let mut mbbi_direct: Variable<u32> = take_var(&mut ctx, "example:mbbiDirect");
     let mut mbbo_direct: Variable<u32> = take_var(&mut ctx, "example:mbboDirect");
-    let mut stringin: ArrayVariable<u8> = take_var(&mut ctx, "example:stringin");
-    let mut stringout: ArrayVariable<u8> = take_var(&mut ctx, "example:stringout");
+    let mut stringin: Variable<[u8]> = take_var(&mut ctx, "example:stringin");
+    let mut stringout: Variable<[u8]> = take_var(&mut ctx, "example:stringout");
 
     assert!(ctx.registry.is_empty());
 
@@ -57,7 +57,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                     ao.request().await.write(init).await;
                     init
                 }
-                None => ao.acquire().await.read().await,
+                None => ao.wait().await.read().await,
             };
             log::info!("ao -> ai: {}", value);
             ai.request().await.write(value).await;
@@ -75,7 +75,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                     buffer.extend(init);
                 }
                 None => {
-                    aao.acquire().await.read_to_vec(&mut buffer).await;
+                    aao.wait().await.read_to_vec(&mut buffer).await;
                 }
             };
             log::info!("aao -> (aai, waveform): {:?}", buffer);
@@ -93,7 +93,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                     bo.request().await.write(init).await;
                     init
                 }
-                None => bo.acquire().await.read().await,
+                None => bo.wait().await.read().await,
             };
             log::info!("bo -> bi: {}", value != 0);
             bi.request().await.write(value).await;
@@ -107,7 +107,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                     mbbo_direct.request().await.write(init).await;
                     init
                 }
-                None => mbbo_direct.acquire().await.read().await,
+                None => mbbo_direct.wait().await.read().await,
             };
             log::info!("mbbo_direct -> mbbi_direct: {:032b}", value);
             mbbi_direct.request().await.write(value).await;
@@ -129,7 +129,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                     buffer.extend_from_slice(init.as_bytes());
                 }
                 None => {
-                    stringout.acquire().await.read_to_vec(&mut buffer).await;
+                    stringout.wait().await.read_to_vec(&mut buffer).await;
                 }
             };
             log::info!(
