@@ -9,6 +9,7 @@ use epics_ca::{
     Context, ValueChannel,
 };
 use futures::{future::join_all, join, pin_mut, Stream};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rand::{
     distributions::{Alphanumeric, DistString, Standard, Uniform},
     Rng, SeedableRng,
@@ -57,6 +58,11 @@ async fn main() {
     let rng = Xoroshiro128PlusPlus::seed_from_u64(SEED);
     let ctx = Context::new().unwrap();
 
+    let m = MultiProgress::new();
+    let sty = ProgressStyle::with_template("{prefix:24} [{wide_bar}] {pos:>6}/{len:6}")
+        .unwrap()
+        .progress_chars("=> ");
+
     join!(
         async {
             let mut rng = rng.clone();
@@ -68,34 +74,46 @@ async fn main() {
             pin_mut!(mon);
             assert_eq!(next(&mut mon).await.unwrap(), 0.0);
 
+            let pb = m.add(
+                ProgressBar::new(ATTEMPTS as u64)
+                    .with_prefix("ao -> ai")
+                    .with_style(sty.clone()),
+            );
             for _ in 0..ATTEMPTS {
                 let x = rng.sample(StandardNormal);
                 output.put(x).unwrap().await.unwrap();
                 assert_eq!(next(&mut mon).await.unwrap(), x);
+                pb.inc(1);
             }
-
-            println!("ao -> ai: ok");
+            pb.finish();
         },
         async {
             let mut input = connect::<EpicsEnum, _>(&ctx, "example:bi").await;
             let mut output = connect::<EpicsEnum, _>(&ctx, "example:bo").await;
 
+            let pb = m.add(
+                ProgressBar::new(2)
+                    .with_prefix("bo -> bi")
+                    .with_style(sty.clone()),
+            );
             output.put(EpicsEnum(0)).unwrap().await.unwrap();
             let mon = input.subscribe();
             pin_mut!(mon);
             assert_eq!(next(&mut mon).await.unwrap(), EpicsEnum(0));
+            pb.inc(1);
 
             output.put(EpicsEnum(1)).unwrap().await.unwrap();
             assert_eq!(next(&mut mon).await.unwrap(), EpicsEnum(1));
+            pb.inc(1);
 
-            println!("bo -> bi: ok");
+            pb.finish();
         },
         async {
             let mut rng = rng.clone();
             let ctx = ctx.clone();
             const NBITS: usize = 32;
             let mut value: u32 = 0;
-            let mut output = join_all((0..NBITS).into_iter().map(|i| {
+            let mut output = join_all((0..NBITS).map(|i| {
                 let ctx = ctx.clone();
                 async move {
                     let name = format!("example:mbboDirect.B{:X}", i);
@@ -105,7 +123,7 @@ async fn main() {
                 }
             }))
             .await;
-            let mut input = join_all((0..NBITS).into_iter().map(|i| {
+            let mut input = join_all((0..NBITS).map(|i| {
                 let ctx = ctx.clone();
                 async move {
                     let name = format!("example:mbbiDirect.B{:X}", i);
@@ -121,15 +139,21 @@ async fn main() {
             for mon in monitors.iter_mut() {
                 assert_eq!(box_next(mon).await.unwrap(), 0);
             }
+
+            let pb = m.add(
+                ProgressBar::new(ATTEMPTS as u64)
+                    .with_prefix("mbboDirect -> mbbiDirect")
+                    .with_style(sty.clone()),
+            );
             for _ in 0..ATTEMPTS {
                 let i = rng.sample(Uniform::new(0, NBITS));
                 value ^= 1 << i;
                 let x = ((value >> i) & 1) as u8;
                 output[i].put(x).unwrap().await.unwrap();
                 assert_eq!(monitors[i].next().await.unwrap().unwrap(), x);
+                pb.inc(1);
             }
-
-            println!("mbboDirect -> mbbiDirect: ok");
+            pb.finish();
         },
         async {
             let mut rng = rng.clone();
@@ -146,6 +170,11 @@ async fn main() {
             pin_mut!(mon);
             assert_eq!(next(&mut mon).await.unwrap(), prev);
 
+            let pb = m.add(
+                ProgressBar::new(ATTEMPTS as u64)
+                    .with_prefix("stringout -> stringin")
+                    .with_style(sty.clone()),
+            );
             for _ in 0..ATTEMPTS {
                 let len = rng.sample(Uniform::new_inclusive(0, EpicsString::MAX_LEN));
                 let string = epics_string(Alphanumeric.sample_string(&mut rng, len));
@@ -155,14 +184,14 @@ async fn main() {
                 output.put(string).unwrap().await.unwrap();
                 assert_eq!(next(&mut mon).await.unwrap(), string);
                 prev = string;
+                pb.inc(1);
             }
 
             let string = epics_string("@".repeat(EpicsString::MAX_LEN));
             assert_ne!(string, prev);
             output.put(string).unwrap().await.unwrap();
             assert_eq!(next(&mut mon).await.unwrap(), string);
-
-            println!("stringout -> stringin: ok");
+            pb.finish();
         },
         async {
             let mut rng = rng.clone();
@@ -178,6 +207,11 @@ async fn main() {
             assert_eq!(next(&mut mon).await.unwrap(), prev);
             assert_eq!(next(&mut mon_wf).await.unwrap(), prev);
 
+            let pb = m.add(
+                ProgressBar::new(ATTEMPTS as u64)
+                    .with_prefix("aao -> (aai, waveform)")
+                    .with_style(sty.clone()),
+            );
             let max_len = output.element_count().unwrap();
             for _ in 0..ATTEMPTS {
                 let len = rng.sample(Uniform::new_inclusive(1, max_len));
@@ -192,6 +226,7 @@ async fn main() {
                 assert_eq!(next(&mut mon).await.unwrap(), vec);
                 assert_eq!(next(&mut mon_wf).await.unwrap(), vec);
                 prev = vec;
+                pb.inc(1);
             }
 
             let vec = [-1].repeat(max_len);
@@ -199,8 +234,8 @@ async fn main() {
             output.put_ref(&vec).unwrap().await.unwrap();
             assert_eq!(next(&mut mon).await.unwrap(), vec);
             assert_eq!(next(&mut mon_wf).await.unwrap(), vec);
-
-            println!("aao -> (aai, waveform): ok");
+            pb.finish();
         },
     );
+    println!("Success!");
 }

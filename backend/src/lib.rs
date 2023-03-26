@@ -59,7 +59,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                 }
                 None => ao.wait().await.read().await,
             };
-            log::info!("ao -> ai: {}", value);
+            log::debug!("ao -> ai: {}", value);
             ai.request().await.write(value).await;
         }
     });
@@ -78,7 +78,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                     aao.wait().await.read_to_vec(&mut buffer).await;
                 }
             };
-            log::info!("aao -> (aai, waveform): {:?}", buffer);
+            log::debug!("aao -> (aai, waveform): {:?}", buffer);
             join!(
                 async { aai.request().await.write_from_slice(&buffer).await },
                 async { waveform.request().await.write_from_slice(&buffer).await }
@@ -95,7 +95,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                 }
                 None => bo.wait().await.read().await,
             };
-            log::info!("bo -> bi: {}", value != 0);
+            log::debug!("bo -> bi: {}", value != 0);
             bi.request().await.write(value).await;
         }
     });
@@ -109,7 +109,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                 }
                 None => mbbo_direct.wait().await.read().await,
             };
-            log::info!("mbbo_direct -> mbbi_direct: {:032b}", value);
+            log::debug!("mbbo_direct -> mbbi_direct: {:032b}", value);
             mbbi_direct.request().await.write(value).await;
         }
     });
@@ -132,7 +132,7 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
                     stringout.wait().await.read_to_vec(&mut buffer).await;
                 }
             };
-            log::info!(
+            log::debug!(
                 "stringout -> stringin: '{}'",
                 String::from_utf8_lossy(&buffer)
             );
