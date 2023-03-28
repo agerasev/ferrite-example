@@ -110,6 +110,29 @@ async fn main() {
         },
         async {
             let mut rng = rng.clone();
+            let mut input = connect::<i32, _>(&ctx, "example:longin").await;
+            let mut output = connect::<i32, _>(&ctx, "example:longout").await;
+
+            output.put(0).unwrap().await.unwrap();
+            let mon = input.subscribe();
+            pin_mut!(mon);
+            assert_eq!(next(&mut mon).await.unwrap(), 0);
+
+            let pb = m.add(
+                ProgressBar::new(ATTEMPTS as u64)
+                    .with_prefix("longout -> longin")
+                    .with_style(sty.clone()),
+            );
+            for _ in 0..ATTEMPTS {
+                let x = rng.sample(Standard);
+                output.put(x).unwrap().await.unwrap();
+                assert_eq!(next(&mut mon).await.unwrap(), x);
+                pb.inc(1);
+            }
+            pb.finish();
+        },
+        async {
+            let mut rng = rng.clone();
             let ctx = ctx.clone();
             const NBITS: usize = 32;
             let mut value: u32 = 0;
@@ -150,7 +173,7 @@ async fn main() {
                 value ^= 1 << i;
                 let x = ((value >> i) & 1) as u8;
                 output[i].put(x).unwrap().await.unwrap();
-                assert_eq!(monitors[i].next().await.unwrap().unwrap(), x);
+                assert_eq!(box_next(&mut monitors[i]).await.unwrap(), x);
                 pb.inc(1);
             }
             pb.finish();

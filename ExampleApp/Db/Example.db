@@ -32,6 +32,14 @@ record(bo, "example:bo") {
     field(DTYP, "ferrite")
 }
 
+record(longin, "example:longin") {
+    field(DTYP, "ferrite")
+}
+
+record(longout, "example:longout") {
+    field(DTYP, "ferrite")
+}
+
 record(mbbiDirect, "example:mbbiDirect") {
     field(DTYP, "ferrite")
 }

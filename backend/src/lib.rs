@@ -42,6 +42,8 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
     let mut waveform: Variable<[i32]> = take_var(&mut ctx, "example:waveform");
     let mut bi: Variable<u16> = take_var(&mut ctx, "example:bi");
     let mut bo: Variable<u16> = take_var(&mut ctx, "example:bo");
+    let mut longin: Variable<i32> = take_var(&mut ctx, "example:longin");
+    let mut longout: Variable<i32> = take_var(&mut ctx, "example:longout");
     let mut mbbi_direct: Variable<u32> = take_var(&mut ctx, "example:mbbiDirect");
     let mut mbbo_direct: Variable<u32> = take_var(&mut ctx, "example:mbboDirect");
     let mut stringin: Variable<[u8]> = take_var(&mut ctx, "example:stringin");
@@ -97,6 +99,20 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
             };
             log::debug!("bo -> bi: {}", value != 0);
             bi.request().await.write(value).await;
+        }
+    });
+    exec.spawn_ok(async move {
+        let mut init = Some(0x7aaa_aaaa);
+        loop {
+            let value = match init.take() {
+                Some(init) => {
+                    longout.request().await.write(init).await;
+                    init
+                }
+                None => longout.wait().await.read().await,
+            };
+            log::debug!("longout -> longin: {}", value);
+            longin.request().await.write(value).await;
         }
     });
     exec.spawn_ok(async move {
