@@ -52,107 +52,105 @@ async fn async_main(exec: ThreadPool, mut ctx: Context) {
     assert!(ctx.registry.is_empty());
 
     exec.spawn_ok(async move {
-        let mut init = Some(std::f64::consts::PI);
+        {
+            let init = std::f64::consts::PI;
+            ao.request().await.write(init).await;
+            ai.request().await.write(init).await;
+            log::info!("init (ao, ai): {}", init);
+        }
         loop {
-            let value = match init.take() {
-                Some(init) => {
-                    ao.request().await.write(init).await;
-                    init
-                }
-                None => ao.wait().await.read().await,
-            };
-            log::debug!("ao -> ai: {}", value);
-            ai.request().await.write(value).await;
+            let guard = ao.wait().await;
+            ai.request().await.write(*guard).await;
+            log::debug!("ao -> ai: {}", *guard);
+            guard.accept().await;
         }
     });
     exec.spawn_ok(async move {
         assert!(aao.max_len() <= aai.max_len());
-        let mut buffer = Vec::with_capacity(aao.max_len());
-        let mut init = Some(0..(aao.max_len() as i32));
-        loop {
-            buffer.clear();
-            match init.take() {
-                Some(init) => {
-                    aao.request().await.write_from(init.clone()).await;
-                    buffer.extend(init);
-                }
-                None => {
-                    aao.wait().await.read_to_vec(&mut buffer).await;
-                }
-            };
-            log::debug!("aao -> (aai, waveform): {:?}", buffer);
+        {
+            let init = 0..(aao.max_len() as i32);
+            aao.request().await.write_from(init.clone()).await;
             join!(
-                async { aai.request().await.write_from_slice(&buffer).await },
-                async { waveform.request().await.write_from_slice(&buffer).await }
+                async { aai.request().await.write_from_iter(init.clone()).await },
+                async { waveform.request().await.write_from_iter(init.clone()).await }
             );
+            log::info!("init (aao, aai, waveform): {:?}", init);
+        }
+        loop {
+            let guard = aao.wait().await;
+            join!(
+                async { aai.request().await.write_from_slice(&guard).await },
+                async { waveform.request().await.write_from_slice(&guard).await }
+            );
+            log::debug!("aao -> (aai, waveform): {:?}", guard.as_slice());
+            guard.accept().await;
         }
     });
     exec.spawn_ok(async move {
-        let mut init = Some(1);
+        {
+            let init = 1;
+            bo.request().await.write(init).await;
+            bi.request().await.write(init).await;
+            log::info!("init (bo, bi): {}", init != 0);
+        }
         loop {
-            let value = match init.take() {
-                Some(init) => {
-                    bo.request().await.write(init).await;
-                    init
-                }
-                None => bo.wait().await.read().await,
-            };
-            log::debug!("bo -> bi: {}", value != 0);
-            bi.request().await.write(value).await;
+            let guard = bo.wait().await;
+            bi.request().await.write(*guard).await;
+            log::debug!("bo -> bi: {}", *guard != 0);
+            guard.accept().await;
         }
     });
     exec.spawn_ok(async move {
-        let mut init = Some(0x7aaa_aaaa);
+        {
+            let init = 0x7aaa_aaaa;
+            longout.request().await.write(init).await;
+            longin.request().await.write(init).await;
+            log::info!("init (longout, longin): {}", init);
+        }
         loop {
-            let value = match init.take() {
-                Some(init) => {
-                    longout.request().await.write(init).await;
-                    init
-                }
-                None => longout.wait().await.read().await,
-            };
-            log::debug!("longout -> longin: {}", value);
-            longin.request().await.write(value).await;
+            let guard = longout.wait().await;
+            longin.request().await.write(*guard).await;
+            log::debug!("longout -> longin: {}", *guard);
+            guard.accept().await;
         }
     });
     exec.spawn_ok(async move {
-        let mut init = Some(0xaaaaaaaa);
+        {
+            let init = 0xaaaa_aaaa;
+            mbbo_direct.request().await.write(init).await;
+            log::info!("init (mbbo_direct, mbbi_direct): {:032b}", init);
+        }
         loop {
-            let value = match init.take() {
-                Some(init) => {
-                    mbbo_direct.request().await.write(init).await;
-                    init
-                }
-                None => mbbo_direct.wait().await.read().await,
-            };
-            log::debug!("mbbo_direct -> mbbi_direct: {:032b}", value);
-            mbbi_direct.request().await.write(value).await;
+            let guard = mbbo_direct.wait().await;
+            mbbi_direct.request().await.write(*guard).await;
+            log::debug!("mbbo_direct -> mbbi_direct: {:032b}", *guard);
+            guard.accept().await;
         }
     });
     exec.spawn_ok(async move {
         assert!(stringout.max_len() <= stringin.max_len());
-        let mut buffer = Vec::with_capacity(stringout.max_len());
-        let mut init = Some("Hello, Ferrite!");
+        {
+            let init = "Hello, Ferrite!";
+            stringout
+                .request()
+                .await
+                .write_from_slice(init.as_bytes())
+                .await;
+            stringin
+                .request()
+                .await
+                .write_from_slice(init.as_bytes())
+                .await;
+            log::info!("init: (stringout, stringin): '{}'", init);
+        }
         loop {
-            buffer.clear();
-            match init.take() {
-                Some(init) => {
-                    stringout
-                        .request()
-                        .await
-                        .write_from_slice(init.as_bytes())
-                        .await;
-                    buffer.extend_from_slice(init.as_bytes());
-                }
-                None => {
-                    stringout.wait().await.read_to_vec(&mut buffer).await;
-                }
-            };
+            let guard = stringout.wait().await;
+            stringin.request().await.write_from_slice(&guard).await;
             log::debug!(
                 "stringout -> stringin: '{}'",
-                String::from_utf8_lossy(&buffer)
+                String::from_utf8_lossy(&guard)
             );
-            stringin.request().await.write_from_slice(&buffer).await;
+            guard.accept().await;
         }
     });
 
