@@ -14,7 +14,7 @@ At first you need to get and build [epics-base](https://github.com/epics-base/ep
 After that edit `EPICS_BASE` variable in the following files:
 
 + `configure/RELEASE`
-+ `test.sh`
++ `scripts/test.sh`
 
 to contain actual path to epics-base.
 
@@ -53,11 +53,11 @@ cd iocBoot/iocExample/
 ./st.cmd
 ```
 
-Or you can use `run.sh` script to build and run IOC. 
+Or you can use `scripts/run.sh` script to build and run IOC. 
 
 ## Test
 
 To automatically test the IOC:
 
 + Run IOC itself
-+ Run `test.sh` script without stopping the IOC. 
++ Run `scripts/test.sh` script without stopping the IOC. 

@@ -3,6 +3,4 @@
 cd backend && \
 cargo build && \
 cd .. && \
-make && \
-cd iocBoot/iocExample && \
-./st.cmd
+make
