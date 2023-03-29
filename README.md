@@ -14,7 +14,7 @@ At first you need to get and build [epics-base](https://github.com/epics-base/ep
 After that edit `EPICS_BASE` variable in the following files:
 
 + `configure/RELEASE`
-+ `scripts/test.sh`
++ `scripts/env.sh`
 
 to contain actual path to epics-base.
 
